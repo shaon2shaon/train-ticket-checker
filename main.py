@@ -12,6 +12,7 @@ import smtplib
 from email.message import EmailMessage
 from fastapi.responses import JSONResponse
 import os
+from selenium.webdriver.chrome.service import Service
 
 
 app = FastAPI()
