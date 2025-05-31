@@ -1,8 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
+pydantic
 selenium
 chromedriver-autoinstaller
-email-validator
-pydantic
-python-multipart
-apscheduler

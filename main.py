@@ -11,14 +11,15 @@ import logging
 import time
 import smtplib
 from email.message import EmailMessage
-from apscheduler.schedulers.background import BackgroundScheduler
+from fastapi.responses import JSONResponse
 import os
+
 
 app = FastAPI()
 
 EMAIL_SENDER = os.getenv("EMAIL_SENDER")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
+
 
 class SeatClass(BaseModel):
     class_: str
@@ -34,11 +35,11 @@ class TrainInfo(BaseModel):
     duration: str
     classes: List[SeatClass]
 
-def send_email(subject, body):
+def send_email(subject, body, receiver_email):
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = EMAIL_SENDER
-    msg["To"] = EMAIL_RECEIVER
+    msg["To"] = receiver_email
     msg.set_content(body)
 
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
@@ -48,12 +49,16 @@ def send_email(subject, body):
         print("Email sent!")
 
 def check_tickets(
+    target_train_name: str = "BANALATA",
     from_city: str = "Dhaka",
     to_city: str = "Rajshahi",
     seat_class: str = "SNIGDHA",
-    date: str = "05-Jun-2025"
+    date: str = "05-Jun-2025",
+    receiver_email: str = "kashmisultana@gmail.com"
 ) -> List[dict]:
+    
     chromedriver_autoinstaller.install()
+    
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
@@ -61,16 +66,17 @@ def check_tickets(
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920x1080")
     driver = webdriver.Chrome(options=chrome_options)
-    wait_general = 20
 
     url = (
         f'https://eticket.railway.gov.bd/booking/train/search'
         f'?fromcity={from_city}&tocity={to_city}&doj={date}&class={seat_class}'
     )
+    
     results = []
+
     try:
         driver.get(url)
-        WebDriverWait(driver, wait_general).until(
+        WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CLASS_NAME, "single-trip-wrapper"))
         )
         time.sleep(2)
@@ -95,12 +101,18 @@ def check_tickets(
                     "fare": fare,
                     "available_tickets": available_tickets,
                 })
-                if train_name.startswith("BANALATA") and seat_type.upper() == "SNIGDHA":
+                
+                if receiver_email and train_name.startswith(target_train_name) and seat_type.upper() == seat_class:
                     try:
                         if int(available_tickets) > 0:
-                            send_email("BANALATA SNIGDHA Ticket Available!", f"{available_tickets} tickets of Jun 5, 2025, are available!")
+                            send_email(
+                                subject=f"{target_train_name} {seat_class} Ticket Available!",
+                                body=f"{available_tickets} tickets of {date} are available!",
+                                receiver_email=receiver_email
+                            )
                     except ValueError:
                         logging.warning(f"Invalid ticket number: {available_tickets}")
+            
             results.append({
                 "train_name": train_name,
                 "from_": journey_start_location,
@@ -114,24 +126,30 @@ def check_tickets(
         logging.error(f"Error occurred: {e}")
     finally:
         driver.quit()
+    
     return results
+
 
 @app.get("/", response_model=List[TrainInfo])
 def get_trains(
+    target_train_name: str = Query("BANALATA"),
     from_city: str = Query("Dhaka"),
     to_city: str = Query("Rajshahi"),
     seat_class: str = Query("SNIGDHA"),
-    date: str = Query("05-Jun-2025")
+    date: str = Query("05-Jun-2025"),
+    receiver_email: str = Query("kashmisultana@gmail.com"),
+    nocache: str = Query(None)
 ):
-    return check_tickets(from_city, to_city, seat_class, date)
-
-scheduler = BackgroundScheduler()
-scheduler.add_job(check_tickets, "interval", minutes=10)
-scheduler.start()
-
-@app.on_event("shutdown")
-def shutdown_event():
-    scheduler.shutdown()
+    data = check_tickets(target_train_name, from_city, to_city, seat_class, date, receiver_email)
+    return JSONResponse(
+        content=data,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 if __name__ == "__main__":
     check_tickets()
+
