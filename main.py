@@ -6,7 +6,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import chromedriver_autoinstaller
 import logging
 import time
 import smtplib
@@ -57,8 +56,6 @@ def check_tickets(
     receiver_email: str = "kashmisultana@gmail.com"
 ) -> List[dict]:
 
-    chromedriver_autoinstaller.install()
-
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
@@ -66,8 +63,11 @@ def check_tickets(
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920x1080")
     chrome_options.binary_location = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome-stable")
+    
+    chrome_options.binary_location = os.getenv("CHROME_PATH", "/usr/bin/chromium")
+    service = Service(executable_path=os.getenv("CHROME_DRIVER_PATH", "/usr/bin/chromedriver"))
 
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
 
     url = (
         f'https://eticket.railway.gov.bd/booking/train/search'
