@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+selenium
+chromedriver-autoinstaller
+email-validator
+pydantic
+python-multipart
+apscheduler

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: train-ticket-checker
+    env: python
+    buildCommand: ""
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: EMAIL_SENDER
+        value: your_email@gmail.com
+      - key: EMAIL_PASSWORD
+        value: your_password
+      - key: EMAIL_RECEIVER
+        value: receiver_email@gmail.com
