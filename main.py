@@ -56,22 +56,24 @@ def check_tickets(
     date: str = "05-Jun-2025",
     receiver_email: str = "kashmisultana@gmail.com"
 ) -> List[dict]:
-    
+
     chromedriver_autoinstaller.install()
-    
+
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.binary_location = os.environ.get("CHROME_BIN", "/usr/bin/google-chrome-stable")
+
     driver = webdriver.Chrome(options=chrome_options)
 
     url = (
         f'https://eticket.railway.gov.bd/booking/train/search'
         f'?fromcity={from_city}&tocity={to_city}&doj={date}&class={seat_class}'
     )
-    
+
     results = []
 
     try:
@@ -101,7 +103,7 @@ def check_tickets(
                     "fare": fare,
                     "available_tickets": available_tickets,
                 })
-                
+
                 if receiver_email and train_name.startswith(target_train_name) and seat_type.upper() == seat_class:
                     try:
                         if int(available_tickets) > 0:
@@ -112,7 +114,7 @@ def check_tickets(
                             )
                     except ValueError:
                         logging.warning(f"Invalid ticket number: {available_tickets}")
-            
+
             results.append({
                 "train_name": train_name,
                 "from_": journey_start_location,
@@ -126,7 +128,7 @@ def check_tickets(
         logging.error(f"Error occurred: {e}")
     finally:
         driver.quit()
-    
+
     return results
 
 
@@ -152,4 +154,3 @@ def get_trains(
 
 if __name__ == "__main__":
     check_tickets()
-
